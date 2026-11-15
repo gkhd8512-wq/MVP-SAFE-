@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MVP SAFE</title>
+<style>
+*{box-sizing:border-box}
+body{background:#080b12;color:white;font-family:Arial;padding:20px}
+.main{max-width:400px;margin:auto}
+h1{text-align:center;color:#20df75;letter-spacing:3px}
+.status{text-align:center;color:#20df75}
+.plans{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.plan{background:#111827;border:1px solid #263449;padding:15px 8px;text-align:center;border-radius:12px}
+.price{color:#20df75;font-size:22px;margin:12px}
+button{background:#123b29;color:#20df75;border:1px solid #20df75;padding:10px;border-radius:8px}
+#payment{display:none;text-align:center;background:#111827;padding:20px;margin-top:22px;border-radius:15px}
+#payment img{width:220px;max-width:100%;background:white;padding:8px;border-radius:8px}
+</style>
+
+<section id="activation" style="background:#17172b;color:white;padding:20px;border-radius:15px;margin:20px 0;font-family:Arial">
+  <h2 style="color:#00e5ff">MVP SAFE - KEY ACTIVATION</h2>
+  <input id="memberKey" placeholder="Enter Your Membership KEY"
+    style="width:100%;padding:13px;box-sizing:border-box;border-radius:8px">
+  <button onclick="activateMembership()"
+    style="width:100%;padding:13px;margin-top:10px;background:#00c8ff;color:#000;border:0;border-radius:8px;font-weight:bold">
+    ACTIVATE KEY
+  </button>
+  <p id="activationMessage"></p>
+  <div id="membershipInfo" style="display:none">
+    <h3 id="planName"></h3>
+    <p id="expiryText"></p>
+    <h2 id="countdown"></h2>
+    <div id="featurePanel" style="display:none">
+      <h3>MEMBERSHIP DASHBOARD</h3>
+      <p>Membership access active</p>
+    </div>
+  </div>
+</section>
+
+<script>
+async function activateMembership() {
+  const key = document.getElementById("memberKey").value.trim();
+  const msg = document.getElementById("activationMessage");
+
+  if (!key) {
+    msg.textContent = "Please enter your KEY";
+    return;
+  }
+
+  try {
+    const response = await fetch("/api/key/activate", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({key})
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      msg.textContent = data.message || "Activation failed";
+      return;
+    }
+
+    localStorage.setItem("mvpMemberKey", key);
+    msg.textContent = data.message;
+    showMembership(data);
+  } catch (error) {
+    msg.textContent = "Server connection failed";
+  }
+}
+
+function showMembership(data) {
+  document.getElementById("membershipInfo").style.display = "block";
+  document.getElementById("featurePanel").style.display = "block";
+  document.getElementById("planName").textContent = "Plan: " + data.plan;
+
+  if (!data.expiresAt) {
+    document.getElementById("expiryText").textContent = "Permanent Membership";
+    document.getElementById("countdown").textContent = "NO EXPIRY";
+    return;
+  }
+
+  document.getElementById("expiryText").textContent =
+    "Expires: " + new Date(data.expiresAt).toLocaleString();
+
+  runCountdown(data.expiresAt);
+}
+
+function runCountdown(expiry) {
+  const timer = document.getElementById("countdown");
+
+  function update() {
+    const remaining = new Date(expiry).getTime() - Date.now();
+
+    if (remaining <= 0) {
+      timer.textContent = "EXPIRED";
+      document.getElementById("featurePanel").style.display = "none";
+      localStorage.removeItem("mvpMemberKey");
+      return;
+    }
+
+    const days = Math.floor(remaining / 86400000);
+    const hours = Math.floor(remaining / 3600000) % 24;
+    const minutes = Math.floor(remaining / 60000) % 60;
+    const seconds = Math.floor(remaining / 1000) % 60;
+
+    timer.textContent = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+    setTimeout(update, 1000);
+  }
+
+  update();
+}
+
+async function restoreMembership() {
+  const key = localStorage.getItem("mvpMemberKey");
+  if (!key) return;
+
+  try {
+    const response = await fetch(
+      "/api/key/status?key=" + encodeURIComponent(key)
+    );
+    const data = await response.json();
+
+    if (data.active) showMembership(data);
+    else localStorage.removeItem("mvpMemberKey");
+  } catch (error) {
+    console.log("Membership status unavailable");
+  }
+}
+
+restoreMembership();
+</script></head>
+<body>
+<div class="main">
+<h1>MVP SAFE</h1>
+<p class="status">● SYSTEM ONLINE</p>
+<h3>SELECT MEMBERSHIP PLAN</h3>
+<div class="plans">
+<div class="plan">2 DAYS<div class="price">₹199</div><button onclick="choose(199)">SELECT</button></div>
+<div class="plan">5 DAYS<div class="price">₹399</div><button onclick="choose(399)">SELECT</button></div>
+<div class="plan">10 DAYS<div class="price">₹599</div><button onclick="choose(599)">SELECT</button></div>
+<div class="plan">20 DAYS<div class="price">₹899</div><button onclick="choose(899)">SELECT</button></div>
+<div class="plan">30 DAYS<div class="price">₹1,199</div><button onclick="choose(1199)">SELECT</button></div>
+<div class="plan">PERMANENT<div class="price">₹2,499</div><button onclick="choose(2499)">SELECT</button></div>
+</div>
+<div id="payment">
+<h3>SCAN & PAY</h3>
+<h2 id="amount"></h2>
+<img src="qr-code.png" alt="UPI Payment QR">
+<p>UPI ID: 9142558924@ibl</p>
+<p style="color:#20df75">MVP SAFE PAYMENT</p>
+</div>
+</div>
+<script>
+function choose(price){
+document.getElementById("amount").innerText="Pay ₹"+price;
+document.getElementById("payment").style.display="block";
+document.getElementById("payment").scrollIntoView({behavior:"smooth"});
+}
+</script>
+<div style="text-align:center;margin:20px;padding:15px;background:#17172b;border-radius:15px">
+  <h3 style="color:#00dfff">Already Have a KEY?</h3>
+  <a href="/activate.html" style="display:block;padding:14px;background:linear-gradient(90deg,#00d5ff,#8755ff);color:#000;text-decoration:none;border-radius:10px;font-weight:bold">
+    ACTIVATE YOUR KEY
+  </a>
+</div>
+<section id="mvp-navigation" style="margin:20px;padding:20px;background:#17172b;border:1px solid #5145a8;border-radius:16px;text-align:center;color:white"><h2 style="color:#50eaff">MVP SAFE MENU</h2><a target="_blank" rel="noopener" href="/" style="display:block;padding:13px;margin:9px;background:#00cfff;color:#111;text-decoration:none;border-radius:9px;font-weight:bold">HOME & PAYMENT</a><a target="_blank" rel="noopener" href="/activate.html" style="display:block;padding:13px;margin:9px;background:#8755ff;color:white;text-decoration:none;border-radius:9px;font-weight:bold">MEMBERS ACTIVATION</a><a target="_blank" rel="noopener" href="/dashboard.html" style="display:block;padding:13px;margin:9px;background:#168c70;color:white;text-decoration:none;border-radius:9px;font-weight:bold">MEMBER DASHBOARD</a><a target="_blank" rel="noopener" href="/admin.html" style="display:block;padding:13px;margin:9px;background:#333;color:white;text-decoration:none;border-radius:9px;font-weight:bold">ADMIN PANEL</a></section></body>
+</html>

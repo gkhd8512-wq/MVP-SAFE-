@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MVP SAFE ADMIN</title>
+<style>
+body{background:#080b12;color:white;font-family:Arial;padding:20px}
+main{max-width:450px;margin:auto}
+h1{color:#20df75;text-align:center}
+input,button{width:100%;padding:13px;margin:8px 0;border-radius:8px;box-sizing:border-box}
+input{background:#111827;border:1px solid #344054;color:white}
+button{background:#123b29;border:1px solid #20df75;color:#20df75}
+.card{background:#111827;border:1px solid #344054;border-radius:12px;padding:15px;margin:12px 0}
+.small{color:#aab6c8;font-size:13px}
+</style>
+</head>
+<body>
+<main>
+<h1>MVP SAFE ADMIN</h1>
+<p class="small">ADMIN PAYMENT CONTROL</p>
+<input id="password" type="password" placeholder="Admin Password">
+<button onclick="loadPayments()">LOGIN / REFRESH</button>
+<div id="message" class="small"></div>
+<div id="payments"></div>
+</main>
+<script>
+let adminPassword="";
+async function loadPayments(){
+ adminPassword=document.getElementById("password").value;
+ const box=document.getElementById("payments");
+ const msg=document.getElementById("message");
+ msg.textContent="Loading...";
+ try{
+  const r=await fetch("/api/admin/payments",{
+   headers:{"x-admin-password":adminPassword}
+  });
+  if(!r.ok)throw Error("Password incorrect or access denied");
+  const data=await r.json();
+  box.innerHTML="";
+  msg.textContent="Payment requests: "+data.length;
+  data.forEach(p=>{
+   const card=document.createElement("div");
+   card.className="card";
+   const info=document.createElement("div");
+   info.textContent=p.plan+" | ₹"+p.amount;
+   const ref=document.createElement("p");
+   ref.className="small";
+   ref.textContent="Reference: "+p.reference;
+   const status=document.createElement("p");
+   status.className="small";
+   status.textContent="Status: "+p.status;
+   card.append(info,ref,status);
+   if(p.status==="PENDING"){
+    const btn=document.createElement("button");
+    btn.textContent="APPROVE AFTER BANK CHECK";
+    btn.onclick=()=>approve(p.id);
+    card.append(btn);
+   }
+   box.append(card);
+  });
+ }catch(e){msg.textContent=e.message;}
+}
+async function approve(id){
+ if(!confirm("Bank account me payment confirm kiya hai?"))return;
+ const r=await fetch("/api/admin/approve/"+encodeURIComponent(id),{
+  method:"POST",
+  headers:{"x-admin-password":adminPassword}
+ });
+ const data=await r.json();
+ if(data.success)alert("Customer KEY: "+data.key);
+ else alert(data.message||"Approval failed");
+ loadPayments();
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,70 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MVP SAFE Activation</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;padding:20px;display:flex;align-items:center;justify-content:center;font-family:Arial;color:white;background:linear-gradient(135deg,#080817,#211052,#062d43)}
+.card{width:100%;max-width:420px;padding:28px 22px;text-align:center;background:#17172bee;border:1px solid #5548a8;border-radius:22px;box-shadow:0 0 35px #5145b966}
+h1{color:#50eaff}
+input{width:100%;padding:15px;border:1px solid #777;border-radius:10px;background:#080d20;color:white;font-size:16px;margin:15px 0}
+button{width:100%;padding:15px;border:0;border-radius:10px;background:linear-gradient(90deg,#00d5ff,#9855ff);font-weight:bold;font-size:16px}
+#message{margin-top:18px}
+</style>
+</head>
+<body>
+<div class="card">
+<h1>MVP SAFE</h1>
+<p>MEMBERSHIP ACTIVATION</p>
+<input id="key" placeholder="ENTER YOUR MEMBERSHIP KEY">
+<button id="activateButton" onclick="activate()">ACTIVATE KEY</button>
+<p id="message"></p>
+</div>
+
+<script>
+async function activate(){
+const key=document.getElementById("key").value.trim();
+const message=document.getElementById("message");
+const button=document.getElementById("activateButton");
+
+if(!key){
+message.textContent="Please enter your KEY";
+return;
+}
+
+button.disabled=true;
+message.textContent="Checking KEY...";
+
+try{
+const response=await fetch("/api/key/activate",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({key})
+});
+const data=await response.json();
+
+if(!response.ok || !data.success){
+message.textContent=data.message || "Activation failed";
+button.disabled=false;
+return;
+}
+
+localStorage.setItem("mvpMemberKey",key);
+message.textContent="Activation successful! Opening dashboard...";
+
+setTimeout(()=>{
+window.location.href="/dashboard.html";
+},1000);
+
+}catch(error){
+message.textContent="Server connection failed";
+button.disabled=false;
+}
+}
+</script>
+</body>
+</html>
+

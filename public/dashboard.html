@@ -1,0 +1,112 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MVP SAFE Dashboard</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:20px;font-family:Arial;color:white;background:linear-gradient(135deg,#09091b,#171044,#071c32)}
+.container{max-width:600px;margin:25px auto;background:#17172b;padding:22px;border:1px solid #5146a5;border-radius:20px;box-shadow:0 0 30px #3528a855}
+h1{text-align:center;color:#54eaff}
+#status{text-align:center;color:#4dffbd}
+#timer{text-align:center;font-size:24px;font-weight:bold;color:#4dffbd}
+.feature{display:flex;justify-content:space-between;align-items:center;padding:13px;margin:10px 0;background:#252541;border-radius:10px}
+input{accent-color:#00dfff;width:20px;height:20px}
+button{width:100%;padding:14px;background:linear-gradient(90deg,#00d5ff,#8c55ff);border:0;border-radius:10px;font-weight:bold;margin-top:15px}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>MVP SAFE</h1>
+<h3 style="text-align:center">MEMBERSHIP DASHBOARD</h3>
+<p id="status">Checking membership...</p>
+<div id="timer"></div>
+<div id="features" style="display:none">
+<h3>FEATURE SETTINGS</h3>
+<div id="switches"></div>
+<p style="font-size:12px;color:#aaa">These are visual interface switches only. They do not modify or interact with Free Fire.</p>
+</div>
+<button onclick="location.href='/activate.html'">ACTIVATE KEY</button>
+</div>
+
+<script>
+const names=[
+"Aimbot","No Recoil","Aim Assist","Headshot Mode",
+"ESP","ESP Line","ESP Box","ESP Name","ESP Distance",
+"Fly","Speed 2X","Speed 3X","Jump Boost"
+];
+
+document.getElementById("switches").innerHTML=names.map(name=>
+`<div class="feature"><span>${name}</span><input type="checkbox"></div>`
+).join("");
+
+let interval;
+
+async function checkMembership(){
+const key=localStorage.getItem("mvpMemberKey");
+const status=document.getElementById("status");
+const features=document.getElementById("features");
+const timer=document.getElementById("timer");
+
+if(!key){
+status.textContent="Membership KEY required";
+features.style.display="none";
+return;
+}
+
+try{
+const response=await fetch("/api/key/status?key="+encodeURIComponent(key));
+const data=await response.json();
+
+if(!data.active){
+status.textContent=data.message || "Membership inactive";
+features.style.display="none";
+timer.textContent="";
+localStorage.removeItem("mvpMemberKey");
+return;
+}
+
+status.textContent="MEMBERSHIP ACTIVE | "+data.plan;
+features.style.display="block";
+
+clearInterval(interval);
+
+if(!data.expiresAt){
+timer.textContent="PERMANENT MEMBERSHIP";
+return;
+}
+
+function update(){
+const left=new Date(data.expiresAt).getTime()-Date.now();
+
+if(left<=0){
+clearInterval(interval);
+timer.textContent="EXPIRED";
+features.style.display="none";
+status.textContent="Membership expired";
+localStorage.removeItem("mvpMemberKey");
+return;
+}
+
+const d=Math.floor(left/86400000);
+const h=Math.floor(left/3600000)%24;
+const m=Math.floor(left/60000)%60;
+const s=Math.floor(left/1000)%60;
+timer.textContent=`${d}d ${h}h ${m}m ${s}s`;
+}
+
+update();
+interval=setInterval(update,1000);
+
+}catch(e){
+status.textContent="Server connection failed";
+}
+}
+
+checkMembership();
+</script>
+</body>
+</html>
+
